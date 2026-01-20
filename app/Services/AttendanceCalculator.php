@@ -488,9 +488,9 @@ class AttendanceCalculator
             $workMinutes = $dailyCalculation['regular_minutes'];
             $requiredMinutes = $this->config['regular_hours']['work_minutes']; // 465分
 
-            // 半休の場合は半分
+            // 半休の場合は勤務枠と休憩の重なりを考慮した必要時間を算出
             if ($absenceReason === 'am_half_leave' || $absenceReason === 'pm_half_leave') {
-                $requiredMinutes = (int)ceil($requiredMinutes / 2); // 233分
+                $requiredMinutes = $this->getRequiredMinutesForHalfLeave($absenceReason);
             }
 
             // 所定時間に足りていない場合（遅刻・早退とは別にチェック）
@@ -524,5 +524,40 @@ class AttendanceCalculator
         $hours = (int)$parts[0];
         $minutes = (int)($parts[1] ?? 0);
         return $hours * 60 + $minutes;
+    }
+
+    /**
+     * 半休時の必要所定時間を計算（休憩時間を考慮）
+     *
+     * @param string $leaveType 'am_half_leave' or 'pm_half_leave'
+     * @return int 必要所定時間（分）
+     */
+    protected function getRequiredMinutesForHalfLeave(string $leaveType): int
+    {
+        // 半休設定から勤務枠を取得
+        $halfLeaveConfig = $leaveType === 'am_half_leave'
+            ? $this->config['half_leave']['pm']  // 午前半休 → 午後勤務
+            : $this->config['half_leave']['am']; // 午後半休 → 午前勤務
+
+        $workStart = $this->parseTimeOnly($halfLeaveConfig['start']);
+        $workEnd = $this->parseTimeOnly($halfLeaveConfig['end']);
+        $workWindowMinutes = $workEnd - $workStart;
+
+        // 勤務枠と重なる休憩時間を計算
+        $overlapBreakMinutes = 0;
+        foreach ($this->config['breaks'] as $break) {
+            $breakStart = $this->parseTimeOnly($break['start']);
+            $breakEnd = $this->parseTimeOnly($break['end']);
+
+            // 勤務枠と休憩時間の重なりを計算
+            $overlapStart = max($workStart, $breakStart);
+            $overlapEnd = min($workEnd, $breakEnd);
+
+            if ($overlapEnd > $overlapStart) {
+                $overlapBreakMinutes += $overlapEnd - $overlapStart;
+            }
+        }
+
+        return $workWindowMinutes - $overlapBreakMinutes;
     }
 }
