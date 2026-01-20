@@ -378,6 +378,55 @@
                             <span style="color: #dc2626;">60h</span>
                         </div>
                     </div>
+
+                    {{-- 法定内・法定時間外（社内42時間上限） --}}
+                    @php
+                        $statutoryWithin = $monthlyTotal['statutory_within_minutes_total'];
+                        $legalOvertime = $monthlyTotal['legal_overtime_minutes_total'];
+                        $isOver42 = $legalOvertime > (42 * 60);  // 42時間超
+                        $legalOvertimePercentage = min(100, ($legalOvertime / (42 * 60)) * 100);
+                    @endphp
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {{-- 法定内（所定超〜8hまで） --}}
+                        <div class="p-4 rounded-lg border-2 border-gray-300 bg-gray-50">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-sm font-bold" style="color: #4b5563;">
+                                        法定内（所定超〜8hまで）
+                                    </div>
+                                    <div class="text-xl font-bold font-mono" style="color: #4b5563;">
+                                        {{ $this->formatWorkTime($statutoryWithin) }}
+                                    </div>
+                                </div>
+                                <div class="text-xs" style="color: #9ca3af;">
+                                    最大15分/日 × 出勤日
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- 法定時間外（8h超） --}}
+                        <div class="p-4 rounded-lg border-2 {{ $isOver42 ? 'border-red-500 bg-red-50' : 'border-sky-400 bg-sky-50' }}">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-sm font-bold" style="color: {{ $isOver42 ? '#dc2626' : '#0284c7' }};">
+                                        法定時間外（8h超）
+                                    </div>
+                                    <div class="text-xl font-bold font-mono" style="color: {{ $isOver42 ? '#dc2626' : '#0284c7' }};">
+                                        {{ $this->formatWorkTime($legalOvertime) }}
+                                    </div>
+                                    <div class="text-sm" style="color: #6b7280;">/ 42:00（社内上限）</div>
+                                </div>
+                            </div>
+                            {{-- プログレスバー --}}
+                            <div class="mt-2 h-2 rounded-full overflow-hidden" style="background-color: #e5e7eb;">
+                                <div class="h-full rounded-full transition-all" style="width: {{ $legalOvertimePercentage }}%; background-color: {{ $isOver42 ? '#dc2626' : '#0ea5e9' }};"></div>
+                            </div>
+                            <div class="mt-1 flex justify-between text-xs" style="color: #9ca3af;">
+                                <span>0h</span>
+                                <span style="color: {{ $isOver42 ? '#dc2626' : '#0284c7' }};">42h</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             @endif
         @else

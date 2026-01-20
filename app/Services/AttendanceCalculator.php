@@ -27,6 +27,8 @@ class AttendanceCalculator
             'night_minutes' => 0,                    // 深夜残業時間（22:00～翌05:00）
             'prescribed_holiday_minutes' => 0,       // 所定休日労働時間
             'holiday_minutes' => 0,                  // 法定休日労働時間
+            'statutory_within_minutes' => 0,         // 法定内（所定465分超〜法定480分まで）
+            'legal_overtime_minutes' => 0,           // 法定時間外（480分超）
             'is_legal_holiday' => false,             // 法定休日かどうか
             'is_prescribed_holiday' => false,        // 所定休日かどうか
         ];
@@ -113,6 +115,17 @@ class AttendanceCalculator
 
         // 実働時間 = 所定 + 残業 + 深夜
         $result['work_minutes'] = $result['regular_minutes'] + $result['overtime_minutes'] + $result['night_minutes'];
+
+        // 法定内・法定時間外の計算（平日のみ）
+        // 所定465分、法定480分を基準に計算
+        $scheduledMinutes = $this->config['regular_hours']['work_minutes']; // 465分
+        $statutoryLimit = 480; // 法定8時間 = 480分
+
+        // 法定内（所定465分超〜法定480分まで、最大15分/日）
+        $result['statutory_within_minutes'] = max(0, min($result['work_minutes'], $statutoryLimit) - $scheduledMinutes);
+
+        // 法定時間外（480分超）
+        $result['legal_overtime_minutes'] = max(0, $result['work_minutes'] - $statutoryLimit);
 
         return $result;
     }
@@ -267,6 +280,8 @@ class AttendanceCalculator
             'article36_minutes' => 0,                // 36協定対象時間合計
             'overtime_over60_minutes' => 0,          // 60時間超過分
             'night_over60_minutes' => 0,             // 60時間超過深夜分
+            'statutory_within_minutes_total' => 0,   // 法定内合計（所定超〜8hまで）
+            'legal_overtime_minutes_total' => 0,     // 法定時間外合計（8h超）
             'work_days' => 0,
         ];
 
@@ -284,6 +299,10 @@ class AttendanceCalculator
             $result['regular_minutes'] += $daily['regular_minutes'];
             $result['holiday_minutes'] += $daily['holiday_minutes'];
             $result['prescribed_holiday_minutes'] += $daily['prescribed_holiday_minutes'];
+
+            // 法定内・法定時間外の合算（平日のみ、休日は0なのでそのまま加算でOK）
+            $result['statutory_within_minutes_total'] += $daily['statutory_within_minutes'];
+            $result['legal_overtime_minutes_total'] += $daily['legal_overtime_minutes'];
 
             if ($daily['work_minutes'] > 0) {
                 $result['work_days']++;
