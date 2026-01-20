@@ -282,6 +282,7 @@ class AttendanceCalculator
             'night_over60_minutes' => 0,             // 60時間超過深夜分
             'statutory_within_minutes_total' => 0,   // 法定内合計（所定超〜8hまで）
             'legal_overtime_minutes_total' => 0,     // 法定時間外合計（8h超）
+            'internal_overtime_minutes_total' => 0,  // 社内42h判定用（36協定対象−法定内）
             'work_days' => 0,
         ];
 
@@ -365,6 +366,12 @@ class AttendanceCalculator
                                      + $result['prescribed_holiday_minutes']
                                      + $result['overtime_over60_minutes']
                                      + $result['night_over60_minutes'];
+
+        // 社内42h判定用 = 36協定対象 − 法定内（所定超〜8hまで）
+        // ※法定内15分枠は除外しつつ、所定休日・深夜は含める
+        $result['internal_overtime_minutes_total'] = max(0,
+            $result['article36_minutes'] - $result['statutory_within_minutes_total']
+        );
 
         return $result;
     }
