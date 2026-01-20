@@ -283,7 +283,9 @@ class AttendanceCalculator
             'statutory_within_minutes_total' => 0,   // 法定内合計（所定超〜8hまで）
             'legal_overtime_minutes_total' => 0,     // 法定時間外合計（8h超）
             'internal_overtime_minutes_total' => 0,  // 社内42h判定用（36協定対象−法定内）
-            'work_days' => 0,
+            'work_days' => 0,                        // 総出勤日数（互換用）
+            'workday_count' => 0,                    // 平日出勤日数
+            'holiday_count' => 0,                    // 休日出勤日数（所定休日＋法定休日）
         ];
 
         $dailyResults = [];
@@ -305,9 +307,18 @@ class AttendanceCalculator
             $result['statutory_within_minutes_total'] += $daily['statutory_within_minutes'];
             $result['legal_overtime_minutes_total'] += $daily['legal_overtime_minutes'];
 
+            // 出勤日数のカウント（平日と休日を分離）
             if ($daily['work_minutes'] > 0) {
-                $result['work_days']++;
+                if ($daily['is_legal_holiday'] || $daily['is_prescribed_holiday']) {
+                    // 休日出勤（所定休日 or 法定休日）
+                    $result['holiday_count']++;
+                } else {
+                    // 平日出勤
+                    $result['workday_count']++;
+                }
             }
+            // 互換用：総出勤日数
+            $result['work_days'] = $result['workday_count'] + $result['holiday_count'];
         }
 
         // 60時間の閾値（分単位）

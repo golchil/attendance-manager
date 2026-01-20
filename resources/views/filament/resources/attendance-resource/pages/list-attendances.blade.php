@@ -255,7 +255,7 @@
                         <tfoot>
                             <tr class="bg-gray-100 border-t-2 border-gray-400 font-bold">
                                 <td colspan="5" class="px-3 py-3 text-right" style="color: #111827;">
-                                    月度合計（出勤 {{ $monthlyTotal['work_days'] }} 日）
+                                    月度合計（平日 {{ $monthlyTotal['workday_count'] }}日 @if($monthlyTotal['holiday_count'] > 0)+ 休日 {{ $monthlyTotal['holiday_count'] }}日@endif）
                                 </td>
                                 <td class="px-3 py-3 text-center font-mono" style="color: #111827;">
                                     {{ $this->formatWorkTime($monthlyTotal['work_minutes']) }}
@@ -329,10 +329,16 @@
                             <div class="text-lg font-bold font-mono" style="color: #dc2626;">{{ $this->formatWorkTime($monthlyTotal['holiday_minutes']) }}</div>
                             <div class="text-xs mt-1" style="color: #6b7280;">（36協定対象外）</div>
                         </div>
-                        {{-- 出勤日数 --}}
+                        {{-- 出勤日数（平日） --}}
                         <div class="text-center p-3 rounded-lg border shadow-sm" style="background-color: #ffffff; border-color: #d1d5db;">
-                            <div class="text-xs font-medium mb-1" style="color: #4b5563;">出勤日数</div>
-                            <div class="text-lg font-bold" style="color: #111827;">{{ $monthlyTotal['work_days'] }}日</div>
+                            <div class="text-xs font-medium mb-1" style="color: #4b5563;">出勤日数（平日）</div>
+                            <div class="text-lg font-bold" style="color: #111827;">{{ $monthlyTotal['workday_count'] }}日</div>
+                        </div>
+                        {{-- 休日出勤日数 --}}
+                        <div class="text-center p-3 rounded-lg border shadow-sm" style="background-color: #ffffff; border-color: #f9a8d4;">
+                            <div class="text-xs font-medium mb-1" style="color: #be185d;">休日出勤</div>
+                            <div class="text-lg font-bold" style="color: #be185d;">{{ $monthlyTotal['holiday_count'] }}日</div>
+                            <div class="text-xs mt-1" style="color: #6b7280;">（所定+法定）</div>
                         </div>
                     </div>
 
@@ -400,7 +406,7 @@
                                     </div>
                                 </div>
                                 <div class="text-xs" style="color: #9ca3af;">
-                                    最大15分/日 × 出勤日
+                                    最大15分/日 × 平日出勤{{ $monthlyTotal['workday_count'] }}日
                                 </div>
                             </div>
                         </div>
