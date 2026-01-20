@@ -34,6 +34,9 @@ class ListAttendances extends Page implements HasActions, HasForms
 
     protected ?AttendanceCalculator $calculator = null;
 
+    /** @var array<int, array{total: int, warning: int, info: int}>|null 社員別警告サマリーのキャッシュ */
+    protected ?array $userWarningSummary = null;
+
     public function mount(): void
     {
         $this->selectedYear = now()->year;
@@ -48,6 +51,62 @@ class ListAttendances extends Page implements HasActions, HasForms
             $this->calculator = new AttendanceCalculator();
         }
         return $this->calculator;
+    }
+
+    /**
+     * 全社員の警告件数サマリーを取得（N+1回避・メモ化）
+     *
+     * @return array<int, array{total: int, warning: int, info: int}> user_id => 警告情報
+     */
+    public function getUserWarningSummary(): array
+    {
+        // 既に計算済みならキャッシュを返す
+        if ($this->userWarningSummary !== null) {
+            return $this->userWarningSummary;
+        }
+
+        $period = $this->getPeriod();
+        $calculator = $this->getCalculator();
+
+        // 期間内の全勤怠をまとめて取得（N+1回避）
+        $allAttendances = Attendance::whereBetween('date', [$period['start'], $period['end']])
+            ->orderBy('date')
+            ->get();
+
+        // user_idでグループ化
+        $grouped = $allAttendances->groupBy('user_id');
+
+        $summary = [];
+
+        foreach ($grouped as $userId => $attendances) {
+            $total = 0;
+            $warningCount = 0;
+            $infoCount = 0;
+
+            foreach ($attendances as $attendance) {
+                $daily = $calculator->calculateDaily($attendance);
+                $warnings = $calculator->detectAnomalies($attendance, $daily);
+
+                foreach ($warnings as $warning) {
+                    $total++;
+                    if ($warning['severity'] === 'warning') {
+                        $warningCount++;
+                    } else {
+                        $infoCount++;
+                    }
+                }
+            }
+
+            $summary[$userId] = [
+                'total' => $total,
+                'warning' => $warningCount,
+                'info' => $infoCount,
+            ];
+        }
+
+        $this->userWarningSummary = $summary;
+
+        return $summary;
     }
 
     /**

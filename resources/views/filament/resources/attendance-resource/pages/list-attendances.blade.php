@@ -3,6 +3,10 @@
     <div class="mb-6 p-4 bg-white rounded-lg shadow border border-gray-200">
         <div class="flex flex-wrap items-center gap-4">
             {{-- 従業員選択 --}}
+            @php
+                $warningSummary = $this->getUserWarningSummary();
+                $usersWithWarnings = collect($warningSummary)->filter(fn($s) => $s['total'] > 0)->count();
+            @endphp
             <div class="flex items-center gap-2">
                 <label for="user-select" class="text-sm font-medium whitespace-nowrap" style="color: #374151;">従業員:</label>
                 <select
@@ -13,11 +17,27 @@
                 >
                     <option value="">-- 選択してください --</option>
                     @foreach($this->getUsers() as $user)
+                        @php
+                            $userWarning = $warningSummary[$user->id] ?? null;
+                            $warningLabel = '';
+                            if ($userWarning && $userWarning['total'] > 0) {
+                                if ($userWarning['warning'] > 0) {
+                                    $warningLabel = ' (⚠️' . $userWarning['total'] . ')';
+                                } else {
+                                    $warningLabel = ' (ℹ️' . $userWarning['total'] . ')';
+                                }
+                            }
+                        @endphp
                         <option value="{{ $user->id }}">
-                            {{ $user->employee_code ? $user->employee_code . ' - ' : '' }}{{ $user->name }}
+                            {{ $user->employee_code ? $user->employee_code . ' - ' : '' }}{{ $user->name }}{{ $warningLabel }}
                         </option>
                     @endforeach
                 </select>
+                @if($usersWithWarnings > 0)
+                    <span class="text-sm px-2 py-0.5 rounded" style="background-color: #fef3c7; color: #92400e;">
+                        警告あり: {{ $usersWithWarnings }}名
+                    </span>
+                @endif
             </div>
 
             {{-- 年月選択 --}}
