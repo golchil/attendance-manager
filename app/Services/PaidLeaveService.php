@@ -256,9 +256,16 @@ class PaidLeaveService
             $carryover = 0.0;
 
             if ($index === 0) {
-                // Initial year - use initial_leave_balance
-                $carryover = $initialBalance;
-                $granted = 0.0;
+                // Initial year - split initial_leave_balance into carryover and granted
+                if ($initialBalance <= self::MAX_CARRYOVER_DAYS) {
+                    // Balance is 20 or less - all goes to carryover
+                    $carryover = $initialBalance;
+                    $granted = 0.0;
+                } else {
+                    // Balance exceeds 20 - split into granted + carryover
+                    $granted = (float) $this->calculateGrantDays($user, $yearStart, $useOldRule);
+                    $carryover = min(self::MAX_CARRYOVER_DAYS, max(0, $initialBalance - $granted));
+                }
             } else {
                 // Subsequent years
                 $granted = (float) $this->calculateGrantDays($user, $yearStart, $useOldRule);
@@ -269,7 +276,7 @@ class PaidLeaveService
             $remaining = max(0, $available - $usage);
             $remaining = min(self::MAX_TOTAL_DAYS, $remaining);
 
-            $totalGranted += ($index === 0) ? $carryover : $granted;
+            $totalGranted += ($index === 0) ? ($carryover + $granted) : $granted;
             $totalUsed += $usage;
             $previousRemaining = $remaining;
 
@@ -599,9 +606,18 @@ class PaidLeaveService
 
             if ($hasInitialBalance) {
                 if ($initialDate && $yearStart->format('Y-m-d') === $initialDate->format('Y-m-d')) {
-                    // Initial year - use initial_leave_balance
-                    $carryover = (float) $user->initial_leave_balance;
-                    $granted = 0.0;
+                    // Initial year - split initial_leave_balance into carryover and granted
+                    $initialBalance = (float) $user->initial_leave_balance;
+
+                    if ($initialBalance <= self::MAX_CARRYOVER_DAYS) {
+                        // Balance is 20 or less - all goes to carryover
+                        $carryover = $initialBalance;
+                        $granted = 0.0;
+                    } else {
+                        // Balance exceeds 20 - split into granted + carryover
+                        $granted = (float) $this->calculateGrantDays($user, $yearStart, $useOldRule);
+                        $carryover = min(self::MAX_CARRYOVER_DAYS, max(0, $initialBalance - $granted));
+                    }
                 } elseif ($initialDate && $yearStart->gt($initialDate)) {
                     // After initial year
                     $granted = (float) $this->calculateGrantDays($user, $yearStart, $useOldRule);
